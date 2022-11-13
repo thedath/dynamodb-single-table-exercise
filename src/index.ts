@@ -1,15 +1,17 @@
-import * as dotenv from "dotenv";
 import {
-  DynamoDBClient,
+  BatchWriteItemCommand,
+  BatchWriteItemCommandOutput,
   CreateTableCommand,
+  CreateTableOutput,
   DescribeTableCommand,
   DescribeTableOutput,
-  CreateGlobalSecondaryIndexAction,
-  UpdateTableCommand,
-  ScanCommand,
+  DynamoDBClient,
   ResourceNotFoundException,
-  CreateTableOutput,
+  UpdateTableCommand,
+  UpdateTableCommandOutput,
 } from "@aws-sdk/client-dynamodb";
+import * as dotenv from "dotenv";
+import { reactions, users } from "./data";
 
 dotenv.config();
 
@@ -28,43 +30,95 @@ async function run() {
 
   let tableDescription: DescribeTableOutput | undefined = undefined;
   try {
+    // check whether table already exists or not
+    // throws an error if table doesn't exist
     tableDescription = await dynamoDb.send(describeTable);
     console.log("Table found. Status: ", tableDescription?.Table?.TableStatus);
   } catch (error: unknown) {
+    // check if the error because of not existing table
+    // if not, stop continuing
     if (!(error instanceof ResourceNotFoundException)) throw error;
     console.log("Table not found");
   } finally {
     if (!tableDescription?.Table?.TableStatus) {
       console.log("Creating table");
+
+      // creating the table
       const createTable = new CreateTableCommand({
         TableName,
-        AttributeDefinitions: [{ AttributeName: "", AttributeType: "" }],
-        KeySchema: [{ AttributeName: "", KeyType: "" }],
+        BillingMode: "PAY_PER_REQUEST",
+        AttributeDefinitions: [
+          { AttributeName: "i00_index", AttributeType: "N" },
+        ],
+        KeySchema: [{ AttributeName: "i00_index", KeyType: "HASH" }],
       });
-      const createdTable = (await dynamoDb.send(
+      const createTableResponse: CreateTableOutput = await dynamoDb.send(
         createTable
-      )) as CreateTableOutput;
+      );
+
+      console.log(
+        "Table creation initiated. Status: ",
+        createTableResponse?.TableDescription?.TableStatus
+      );
+
+      // waiting for table to be created as it takes few seconds
+      let flagTableCreated = false;
+      while (!flagTableCreated) {
+        tableDescription = await dynamoDb.send(describeTable);
+        console.log(
+          "Checking  table creation status. Status: ",
+          tableDescription?.Table?.TableStatus
+        );
+        if (tableDescription?.Table?.TableStatus === "ACTIVE")
+          flagTableCreated = true;
+      }
       console.log(
         "Table created. Status: ",
-        createdTable?.TableDescription?.TableStatus
+        tableDescription?.Table?.TableStatus
       );
+
+      console.log("Users creation started.");
+
+      // inserting dummy data for the newly created table
+      const insertUsers = new BatchWriteItemCommand({
+        RequestItems: {
+          [TableName]: users,
+        },
+      });
+      await dynamoDb.send(insertUsers);
+      console.log("Users inserted.");
+
+      // creating global index for user by user_id
+      const addUserIndex = new UpdateTableCommand({
+        TableName,
+        GlobalSecondaryIndexUpdates: [
+          {
+            Create: {
+              IndexName: "UserIdIndex",
+              KeySchema: [{ AttributeName: "i01_user_id", KeyType: "HASH" }],
+              Projection: {
+                NonKeyAttributes: ["i02_user_name"],
+                ProjectionType: "ALL",
+              },
+            },
+          },
+        ],
+      });
+      const addUserIndexResponse: UpdateTableCommandOutput =
+        await dynamoDb.send(addUserIndex);
+      console.log("Add user index. Response: ", addUserIndexResponse);
+
+      const insertReactions = new BatchWriteItemCommand({
+        RequestItems: {
+          [TableName]: reactions,
+        },
+      });
+      await dynamoDb.send(insertReactions);
+      console.log("Users reactions.");
     }
   }
 
   // console.log(tableDescription);
-
-  // new UpdateTableCommand({
-  //   TableName: "",
-  //   GlobalSecondaryIndexUpdates: [
-  //     {
-  //       Create: {
-  //         IndexName: "",
-  //         KeySchema: [{ AttributeName: "", KeyType: "" }],
-  //         Projection: {  }
-  //       },
-  //     },
-  //   ],
-  // });
 
   // const getAllUsers = new ScanCommand({
   //   TableName: "single-table",
