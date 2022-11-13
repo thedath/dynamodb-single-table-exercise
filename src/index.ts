@@ -91,13 +91,15 @@ async function run() {
       // creating global index for user by user_id
       const addUserIndex = new UpdateTableCommand({
         TableName,
+        AttributeDefinitions: [
+          { AttributeName: "i01_user_id", AttributeType: "S" },
+        ],
         GlobalSecondaryIndexUpdates: [
           {
             Create: {
               IndexName: "UserIdIndex",
               KeySchema: [{ AttributeName: "i01_user_id", KeyType: "HASH" }],
               Projection: {
-                NonKeyAttributes: ["i02_user_name"],
                 ProjectionType: "ALL",
               },
             },
