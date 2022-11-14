@@ -17,6 +17,19 @@ dotenv.config();
 
 const TableName = "single-table";
 
+async function waitWhile<T>(
+  doer: () => Promise<T>,
+  checker: (input: T) => boolean
+) {
+  let running = true;
+  let output;
+  while (running) {
+    output = await doer();
+    running = await checker(output);
+  }
+  return output;
+}
+
 async function run() {
   const dynamoDb = new DynamoDBClient({
     region: process.env.AWS_REGION!,
@@ -86,7 +99,7 @@ async function run() {
         },
       });
       await dynamoDb.send(insertUsers);
-      console.log("Users inserted.");
+      console.log("Users created.");
 
       // creating global index for user by user_id
       const addUserIndex = new UpdateTableCommand({
@@ -108,15 +121,49 @@ async function run() {
       });
       const addUserIndexResponse: UpdateTableCommandOutput =
         await dynamoDb.send(addUserIndex);
-      console.log("Add user index. Response: ", addUserIndexResponse);
+      console.log("User index added. Response: ", addUserIndexResponse);
 
+      // inserting reaction dummy data
       const insertReactions = new BatchWriteItemCommand({
         RequestItems: {
           [TableName]: reactions,
         },
       });
       await dynamoDb.send(insertReactions);
-      console.log("Users reactions.");
+      console.log("Reactions created.");
+
+      // creating global index for user by reaction_id
+      const addReactionIndex = new UpdateTableCommand({
+        TableName,
+        AttributeDefinitions: [
+          { AttributeName: "i03_reaction_id", AttributeType: "S" },
+        ],
+        GlobalSecondaryIndexUpdates: [
+          {
+            Create: {
+              IndexName: "ReactionIdIndex",
+              KeySchema: [
+                { AttributeName: "i03_reaction_id", KeyType: "HASH" },
+              ],
+              Projection: {
+                ProjectionType: "ALL",
+              },
+            },
+          },
+        ],
+      });
+
+      tableDescription = await waitWhile(
+        async () => await dynamoDb.send(describeTable),
+        (response) =>
+          response?.Table?.GlobalSecondaryIndexes?.find(
+            (gsi) => gsi.IndexName === "ReactionIdIndex"
+          )?.IndexStatus === "ACTIVE"
+      );
+
+      const addReactionIndexResponse: UpdateTableCommandOutput =
+        await dynamoDb.send(addReactionIndex);
+      console.log("Reaction index added. Response: ", addReactionIndexResponse);
     }
   }
 
