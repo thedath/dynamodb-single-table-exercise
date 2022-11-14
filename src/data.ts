@@ -96,3 +96,120 @@ export const reactions: WriteRequest[] = [
     },
   },
 ];
+
+export const posts: WriteRequest[] = [
+  {
+    PutRequest: {
+      Item: {
+        ...users[2].PutRequest?.Item,
+        ...{
+          i00_index: generateIndex(),
+          i05_post_id: { S: uuidV4() },
+          i06_post: { S: "Hello world!" },
+        },
+      },
+    },
+  },
+  {
+    PutRequest: {
+      Item: {
+        ...users[2].PutRequest?.Item,
+        ...{
+          i00_index: generateIndex(),
+          i05_post_id: { S: uuidV4() },
+          i06_post: { S: "Single tables, FTW! 🥳" },
+        },
+      },
+    },
+  },
+  {
+    PutRequest: {
+      Item: {
+        ...users[0].PutRequest?.Item,
+        ...{
+          i00_index: generateIndex(),
+          i05_post_id: { S: uuidV4() },
+          i06_post: { S: "AWS: 'As we speak' VS 'Amazon Web Services'" },
+        },
+      },
+    },
+  },
+  {
+    PutRequest: {
+      Item: {
+        ...users[1].PutRequest?.Item,
+        ...{
+          i00_index: generateIndex(),
+          i05_post_id: { S: uuidV4() },
+          i06_post: { S: "Lorem ipsum?" },
+        },
+      },
+    },
+  },
+  {
+    PutRequest: {
+      Item: {
+        ...users[3].PutRequest?.Item,
+        ...{
+          i00_index: generateIndex(),
+          i05_post_id: { S: uuidV4() },
+          i06_post: { S: "Testing 1, 2, 3..." },
+        },
+      },
+    },
+  },
+  {
+    PutRequest: {
+      Item: {
+        ...users[3].PutRequest?.Item,
+        ...{
+          i00_index: generateIndex(),
+          i05_post_id: { S: uuidV4() },
+          i06_post: { S: "Good bye guys!!!" },
+        },
+      },
+    },
+  },
+  {
+    PutRequest: {
+      Item: {
+        ...users[3].PutRequest?.Item,
+        ...{
+          i00_index: generateIndex(),
+          i05_post_id: { S: uuidV4() },
+          i06_post: { S: "WHO LET THE DOGS OUT???" },
+        },
+      },
+    },
+  },
+];
+
+export const postReactions: WriteRequest[] = [
+  {
+    PutRequest: {
+      Item: {
+        ...users[0].PutRequest?.Item,
+        ...posts[0].PutRequest?.Item,
+        ...reactions[0].PutRequest?.Item,
+        ...{
+          i00_index: generateIndex(),
+        },
+      },
+    },
+  },
+];
+
+export const postComments: WriteRequest[] = [
+  {
+    PutRequest: {
+      Item: {
+        ...users[3].PutRequest?.Item,
+        ...{
+          i00_index: generateIndex(),
+          i05_post_id: { S: uuidV4() },
+          i06_post: { S: "WHO LET THE DOGS OUT???" },
+        },
+      },
+    },
+  },
+];
